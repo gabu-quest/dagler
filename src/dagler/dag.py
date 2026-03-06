@@ -375,6 +375,9 @@ class DAG:
         from dagler.run import DagRun
 
         DagRun.set_db(queue.db, "dagler_runs")
+        promoted = getattr(DagRun, "__promoted__", {})
+        checks = getattr(DagRun, "__checks__", {})
+        await queue.db._ensure_table_with_promoted("dagler_runs", promoted, checks)
 
         # Idempotency check: return existing run if key matches
         if idempotency_key:

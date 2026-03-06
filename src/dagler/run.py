@@ -271,6 +271,8 @@ class DagRun(AsyncSQLerModel):
 
     async def cancel(self, queue: Queue | None = None) -> DagRun:
         """Cancel all non-terminal jobs in this run."""
+        from sqler import F
+
         from dagler.exceptions import DaglerError
 
         q = queue or self._queue_ref
@@ -278,11 +280,29 @@ class DagRun(AsyncSQLerModel):
             msg = "Queue required for cancellation"
             raise DaglerError(msg)
 
+        # Cancel known static jobs
         for job in self._jobs:
             if job.status in ("pending", "running"):
                 await q.cancel_job(job)
 
+        # Cancel dynamic jobs (fan-out map/reduce) not in self._jobs
+        known_ulids = {j.ulid for j in self._jobs}
+        dynamic_jobs = await Job.query().filter(
+            (F("correlation_id") == self.correlation_id)
+            & F("status").in_list(["pending", "running"]),
+        ).all()
+        for job in dynamic_jobs:
+            if job.ulid not in known_ulids:
+                await q.cancel_job(job)
+
         await self.refresh_status()
+        # Force-set cancelled status — refresh_status may compute "running"
+        # if there's a race window where some jobs haven't transitioned yet
+        if self.status != "cancelled":
+            self.status = "cancelled"
+            self.updated_at = _now_epoch()
+            self.finished_at = self.finished_at or _now_epoch()
+            await self.save()
         return self
 
 
