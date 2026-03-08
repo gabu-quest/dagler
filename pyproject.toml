@@ -1,6 +1,6 @@
 [project]
 name = "dagler"
-version = "0.0.1"
+version = "0.0.2"
 description = "DAG pipeline orchestration built on qler + sqler"
 readme = "README.md"
 requires-python = ">=3.12"

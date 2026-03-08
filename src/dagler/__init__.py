@@ -13,7 +13,7 @@ from dagler.exceptions import (
 from dagler.run import DagRun
 from dagler.task import TaskNode
 
-__version__ = "0.0.1"
+__version__ = "0.0.2"
 
 __all__ = [
     "DAG",
